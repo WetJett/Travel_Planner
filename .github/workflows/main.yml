@@ -1,0 +1,21 @@
+name: main                                
+
+on:
+  push:
+    branches:                                
+      - main
+
+jobs:
+  sast:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v2
+
+      - run: docker run --rm -v $(pwd):/src hysnsec/bandit -r /src -f json -o /src/bandit-output.json
+        continue-on-error: true 
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Bandit
+          path: bandit-output.json
+        if: always()
