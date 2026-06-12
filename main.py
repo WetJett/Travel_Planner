@@ -12,29 +12,27 @@ Base.metadata.create_all(bind=engine)
 # FastAPI app instance
 app = FastAPI()
 
-# Схема для місця (те, що приходить в запиті)
+
 class PlaceCreate(BaseModel):
     external_id: str
     name: str
 
-# Схема для проекту (те, що приходить в запиті)
 class ProjectCreate(BaseModel):
     name: str
     description: Optional[str] = None
-    places: List[PlaceCreate] # Список місць
+    places: List[PlaceCreate] 
 
 
 @app.post("/projects/")
 def create_project(project_data: ProjectCreate):
     db = SessionLocal()
-    # Створюємо об'єкт (він ще не в базі)
+    
     new_project = Project(name=project_data.name, description=project_data.description)
     
     db.add(new_project)
-    db.commit() # Комітимо проект
-    db.refresh(new_project) # Тепер у new_project є ID
+    db.commit() 
+    db.refresh(new_project) # new_project has ID now
     
-    # Додаємо місця
     for p_data in project_data.places:
         new_place = Place(
             external_id=p_data.external_id, 
@@ -43,38 +41,25 @@ def create_project(project_data: ProjectCreate):
         )
         db.add(new_place)
     
-    db.commit() # Комітимо місця
-    
-    # Зберігаємо ID перед закриттям сесії
+    db.commit() 
     project_id = new_project.id
-    
-    db.close() # Закриваємо сесію тільки тут
+    db.close() 
     
     return {"message": "Project created", "id": project_id}
-'''
-@app.post("/projects/")
-def create_project(project_data: ProjectCreate):
-    db = SessionLocal()
-    
-    # Create project
-    new_project = Project(name=project_data.name, description=project_data.description)
-    db.add(new_project)
-    db.commit()
-    db.refresh(new_project) # Fetching ID of project
-    
-    # Adding places, link them to project_id
-    for p_data in project_data.places:
-        new_place = Place(
-            external_id=p_data.external_id, 
-            name=p_data.name, 
-            project_id=new_project.id
-        )
-        db.add(new_place)
-    
-    db.commit()
-    db.close()
-    return {"message": "Project created", "id": new_project.id}'''
 
+@app.get("/projects/")
+def get_projects():
+    db = SessionLocal()
+    projects = db.query(Project).all()
+    db.close()
+    return projects
+
+@app.get("/projects/{project_id}")
+def get_project(project_id: int):
+    db = SessionLocal()
+    project = db.query(Project).filter(Project.id == project_id).first()
+    db.close()
+    return project
 
 if __name__ == "__main__":
     uvicorn.run(app)
